@@ -6,6 +6,18 @@ import { logger } from "../utils/logger.js";
 const router = Router();
 router.use(authenticate);
 
+// GET /api/llm - List available providers
+router.get("/", async (req: AuthRequest, res) => {
+  res.json({
+    providers: [
+      { id: "claude", name: "Anthropic Claude", models: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"] },
+      { id: "openai", name: "OpenAI GPT", models: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"] },
+      { id: "gemini", name: "Google Gemini", models: ["gemini-pro", "gemini-ultra"] },
+      { id: "kimi", name: "Moonshot Kimi", models: ["kimi-chat"] },
+    ],
+  });
+});
+
 // POST /api/llm/chat - Send chat message
 router.post("/chat", async (req: AuthRequest, res) => {
   try {
