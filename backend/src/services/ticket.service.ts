@@ -50,7 +50,7 @@ export class TicketService {
       orderBy: { updatedAt: 'desc' },
     });
     
-    return tickets.map(this.mapTicket);
+    return tickets.map((t: any) => this.mapTicket(t));
   }
 
   async getById(id: string, companyId: string): Promise<Ticket | null> {
@@ -212,7 +212,7 @@ export class TicketService {
     };
   }
 
-  private mapTicket(ticket: any): Ticket {
+  private mapTicket = (ticket: any): Ticket => {
     return {
       id: ticket.id,
       title: ticket.title,
@@ -228,7 +228,7 @@ export class TicketService {
     };
   }
 
-  private mapEvent(event: any): TicketEvent {
+  private mapEvent = (event: any): TicketEvent => {
     return {
       id: event.id,
       type: event.type,
