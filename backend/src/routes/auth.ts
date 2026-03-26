@@ -1,156 +1,224 @@
 import { Router } from "express";
 import { authService } from "../services/auth.service.js";
 import { authenticate, AuthRequest } from "../middleware/auth.js";
-import { prisma } from "../index.js";
+import { logger } from "../utils/logger.js";
 
 const router = Router();
 
-// POST /api/auth/register - Register new company and admin user
+/**
+ * @swagger
+ * tags:
+ *   name: Authentication
+ *   description: User authentication and management
+ */
+
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new company and admin user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - companyName
+ *               - email
+ *               - password
+ *             properties:
+ *               companyName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Validation error
+ */
 router.post("/register", async (req, res) => {
   try {
-    const { email, password, name, companyName, companySlug } = req.body;
-
-    if (!email || !password || !companyName || !companySlug) {
-      return res.status(400).json({ 
-        error: "Missing required fields",
-        fields: ["email", "password", "companyName", "companySlug"] 
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters" });
-    }
-
-    const result = await authService.register(
-      email,
-      password,
-      name,
-      companyName,
-      companySlug,
-    );
-
+    const result = await authService.register(req.body.email, req.body.password, req.body.name, req.body.companyName, req.body.companySlug);
     res.status(201).json(result);
   } catch (error: any) {
-    console.error("Registration error:", error);
-    res.status(400).json({ error: error.message || "Registration failed" });
+    logger.error("Registration error:", error);
+    res.status(400).json({ error: error.message });
   }
 });
 
-// POST /api/auth/login - Login user
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login with email and password
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
-
     const result = await authService.login(email, password);
     res.json(result);
   } catch (error: any) {
-    console.error("Login error:", error);
-    res.status(401).json({ error: error.message || "Invalid credentials" });
+    logger.error("Login error:", error);
+    res.status(401).json({ error: error.message });
   }
 });
 
-// POST /api/auth/refresh - Refresh access token
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New tokens generated
+ *       401:
+ *         description: Invalid refresh token
+ */
 router.post("/refresh", async (req, res) => {
   try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      return res.status(400).json({ error: "Refresh token is required" });
-    }
-
-    const tokens = await authService.refreshToken(refreshToken);
-    res.json(tokens);
+    const result = await authService.refreshToken(req.body.refreshToken);
+    res.json(result);
   } catch (error: any) {
-    console.error("Refresh error:", error);
-    res.status(401).json({ error: error.message || "Invalid refresh token" });
+    logger.error("Token refresh error:", error);
+    res.status(401).json({ error: error.message });
   }
 });
 
-// POST /api/auth/logout - Logout user (client should discard tokens)
-router.post("/logout", authenticate, async (req: AuthRequest, res) => {
-  // In a more complex system, we would blacklist the token
-  // For now, client just discards the tokens
-  res.json({ message: "Logged out successfully" });
-});
-
-// GET /api/auth/me - Get current user
-router.get("/me", authenticate, async (req: AuthRequest, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        companyId: true,
-        createdAt: true,
-        company: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.json(user);
-  } catch (error: any) {
-    console.error("Get user error:", error);
-    res.status(500).json({ error: error.message || "Failed to get user" });
-  }
-});
-
-// POST /api/auth/change-password - Change password
-router.post("/change-password", authenticate, async (req: AuthRequest, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-
-    if (!oldPassword || !newPassword) {
-      return res.status(400).json({ error: "Old and new passwords are required" });
-    }
-
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: "New password must be at least 8 characters" });
-    }
-
-    await authService.changePassword(req.user!.id, oldPassword, newPassword);
-    res.json({ message: "Password changed successfully" });
-  } catch (error: any) {
-    console.error("Change password error:", error);
-    res.status(400).json({ error: error.message || "Failed to change password" });
-  }
-});
-
-
-
-// POST /api/auth/forgot-password
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Reset email sent (if user exists)
+ */
 router.post("/forgot-password", async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email required" });
-    await authService.generatePasswordResetToken(email);
-    res.json({ message: "Reset instructions sent" });
-  } catch (error) { res.status(500).json({ error: "Server error" }); }
+    await authService.generatePasswordResetToken(req.body.email);
+    // Always return success to prevent email enumeration
+    res.json({ message: "Password reset email sent if user exists" });
+  } catch (error: any) {
+    logger.error("Forgot password error:", error);
+    res.json({ message: "Password reset email sent if user exists" });
+  }
 });
 
-// POST /api/auth/reset-password
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password with token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid token
+ */
 router.post("/reset-password", async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-    const success = await authService.resetPassword(token, newPassword);
-    if (success) res.json({ message: "Password reset successful" });
-    else res.status(400).json({ error: "Invalid token" });
-  } catch (error) { res.status(500).json({ error: "Server error" }); }
+    const success = await authService.resetPassword(req.body.token, req.body.newPassword);
+    if (success) {
+      res.json({ message: "Password reset successful" });
+    } else {
+      res.status(400).json({ error: "Invalid or expired token" });
+    }
+  } catch (error: any) {
+    logger.error("Reset password error:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user info
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user data
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/me", authenticate, async (req: AuthRequest, res) => {
+  try {
+    const user = await authService.getCurrentUser(req.user!.id);
+    res.json(user);
+  } catch (error: any) {
+    logger.error("Get user error:", error);
+    res.status(400).json({ error: error.message });
+  }
 });
 
 export default router;

@@ -24,8 +24,12 @@ import approvalsRoutes from "./routes/approvals.js";
 import auditRoutes from "./routes/audit.js";
 import skillsRoutes from "./routes/skills.js";
 import llmRoutes from "./routes/llm.js";
+import agentsRoutes from "./routes/agents.js";
 import channelRoutes from "./routes/channels/index.js";
 import gatewayRoutes from "./routes/gateway.js";
+
+// Import swagger
+import { setupSwagger } from "./swagger.js";
 
 // Import services  
 import { gatewayService } from "./services/gateway.service.js";
@@ -109,8 +113,17 @@ app.use("/api/approvals", approvalsRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/skills", skillsRoutes);
 app.use("/api/llm", llmRoutes);
+app.use("/api/agents", agentsRoutes);
 app.use("/api/channels", channelRoutes);
 app.use("/api/gateway", gatewayRoutes);
+
+// Setup Swagger documentation
+setupSwagger(app);
+
+// Redirect root to API docs
+app.get("/", (req, res) => {
+  res.redirect("/api-docs");
+});
 
 app.get("/api/health", async (req, res) => {
   const gatewayStatus = gatewayService.getStatus();
