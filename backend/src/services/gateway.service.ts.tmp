@@ -1,0 +1,15 @@
+
+    // Handle agents.list response
+    if (message.type === res && message.ok && Array.isArray(message.payload)) {
+      logger.info(Received agents list:, message.payload.length, agents);
+      message.payload.forEach((agent: any) => {
+        this.agents.set(agent.agentId || agent.id, {
+          id: agent.agentId || agent.id,
+          name: agent.name || agent.agentId || Unknown,
+          status: idle,
+          role: agent.role,
+          department: agent.department,
+          lastSeen: new Date().toISOString(),
+        });
+      });
+    }

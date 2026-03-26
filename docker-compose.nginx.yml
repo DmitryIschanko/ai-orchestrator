@@ -1,0 +1,17 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./ssl/nginx-http.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - ai-network
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+networks:
+  ai-network:
+    external: true
