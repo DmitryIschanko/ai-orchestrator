@@ -254,6 +254,7 @@ npm run preview
 ## 📝 Дополнительная документация
 
 - [TESTING.md](./TESTING.md) - Руководство по тестированию
+- [FEATURES.md](./FEATURES.md) - Подробное описание функционала
 - [openclaw-knowledge-base.md](./openclaw-knowledge-base.md) - Технические детали
 
 ## 🤝 Contributing
